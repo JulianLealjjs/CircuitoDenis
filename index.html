@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carte OpenStreetMap avec point GPS dynamique</title>
+    <!-- Feuille de style Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+        #map {
+            flex-grow: 1;
+            width: 100%;
+            min-height: 300px;
+        }
+        .leaflet-control-attribution {
+            display: none !important;
+        }
+        #header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #FE8304;
+            color: black;
+            padding: 20px;
+            margin: 0;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        #footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #FE8304;
+            padding: 20px;
+            color: white;
+            font-weight: bold;
+            text-align: right;
+            z-index: 1000;
+        }
+        .bus-label {
+            color: black;
+            font-weight: bold;
+            text-shadow: 1px 1px white, -1px -1px white, 1px -1px white, -1px 1px white;
+        }
+    </style>
+    <!-- Script Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div id="header">SUPERVISIÓN DEL CIRCUITO "EL DENIS DE PALAVAS"</div>
+    <div id="map"></div>
+    <div id="footer">© 2025 EL DENIS</div>
+    <script>
+        // Initialiser la carte avec des coordonnées par défaut
+        var map = L.map('map').setView([43.52805141065833, 3.9233119436189265], 20);
+        // Ajouter les tuiles OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Marqueur (initialement nul)
+        var marker = null;
+
+        // Mettre à jour ou créer le marqueur
+        function updateMarker(lat, lon, busNumber) {
+            console.log('updateMarker appelé avec:', lat, lon, busNumber);
+            const coords = [lat, lon];
+            if (marker) {
+                marker.setLatLng(coords);
+            } else {
+                marker = L.marker(coords, {
+                    icon: L.divIcon({
+                        className: 'bus-icon',
+                        html: `<div style="position: relative; text-align: center;"><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png" style="width: 25px; height: 41px;"><span class="bus-label" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">${busNumber}</span></div>`,
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41]
+                    })
+                }).addTo(map);
+            }
+            map.panTo(coords);
+        }
+
+        // Fonction pour récupérer les données GPS depuis le Google Sheet CSV
+        async function fetchGPSData() {
+            try {
+                const sheetUrl = 'https://docs.google.com/spreadsheets/d/1LdIgH39lD19FOFhFT9ZIUVZR2fMCy9EPvLb-QhkAZZ0/export?format=csv&gid=2145683287';
+                const response = await fetch(sheetUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error: ${response.status}`);
+                }
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                if (lines.length < 2) {
+                    throw new Error('No data available in the CSV');
+                }
+                const lastLine = lines[lines.length - 1].split(',');
+                const lat = parseFloat(lastLine[4]); // Latitude
+                const lon = parseFloat(lastLine[5]); // Longitude
+                const busNumber = lastLine[3]; // Numéro de bus, ajustez l'index selon votre CSV
+
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    updateMarker(lat, lon, busNumber);
+                } else {
+                    console.warn('Invalid GPS coordinates:', lastLine);
+                }
+            } catch (err) {
+                console.error('Error fetching GPS coordinates:', err);
+            }
+        }
+
+        // Mise à jour initiale + toutes les 10 secondes
+        fetchGPSData();
+        setInterval(fetchGPSData, 10000);
+    </script>
+</body>
+</html>
