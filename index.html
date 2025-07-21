@@ -59,12 +59,13 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-    <div id="header">SUPERVISIÓN DEL CIRCUITO "EL DENIS DE PALAVAS"</div>
+    <div id="header">SUPERVISIÓN DEL CIRCUITO "EL DENIS"</div>
     <div id="map"></div>
     <div id="footer">© 2025 EL DENIS</div>
     <script>
-        // Initialiser la carte avec des coordonnées par défaut
-        var map = L.map('map').setView([43.52805141065833, 3.9233119436189265], 20);
+        // Initialiser la carte avec des coordonnées par défaut (centro en las nuevas coordenadas)
+        var map = L.map('map').setView([25.638258, -100.047526], 15);
+
         // Ajouter les tuiles OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -72,11 +73,15 @@
 
         // Marqueur (initialement nul)
         var marker = null;
+        var polyline = null;
+        var coordinates = [];
 
-        // Mettre à jour ou créer le marqueur
+        // Mettre à jour ou créer le marqueur et la polilínea
         function updateMarker(lat, lon, busNumber) {
             console.log('updateMarker appelé avec:', lat, lon, busNumber);
             const coords = [lat, lon];
+            
+            // Actualizar el marcador
             if (marker) {
                 marker.setLatLng(coords);
             } else {
@@ -89,6 +94,18 @@
                     })
                 }).addTo(map);
             }
+
+            // Agregar coordenadas a la lista para la polilínea
+            coordinates.push(coords);
+            
+            // Actualizar la polilínea
+            if (polyline) {
+                polyline.setLatLngs(coordinates);
+            } else {
+                polyline = L.polyline(coordinates, { color: 'blue', weight: 4 }).addTo(map);
+            }
+
+            // Centrar el mapa en las nuevas coordenadas
             map.panTo(coords);
         }
 
@@ -108,7 +125,7 @@
                 const lastLine = lines[lines.length - 1].split(',');
                 const lat = parseFloat(lastLine[4]); // Latitude
                 const lon = parseFloat(lastLine[5]); // Longitude
-                const busNumber = lastLine[3]; // Numéro de bus, ajustez l'index selon votre CSV
+                const busNumber = lastLine[3]; // Numéro de bus
 
                 if (!isNaN(lat) && !isNaN(lon)) {
                     updateMarker(lat, lon, busNumber);
