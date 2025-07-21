@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Carte OpenStreetMap avec point GPS dynamique et polyligne</title>
-
+    <title>Carte OpenStreetMap avec point GPS dynamique</title>
     <!-- Feuille de style Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -21,32 +20,6 @@
             width: 100%;
             min-height: 300px;
         }
-        .school-label {
-            color: black;
-            text-shadow: 0 0 3px white, 0 0 5px white;
-            padding: 2px 6px;
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            font-weight: bold;
-            white-space: nowrap;
-            position: absolute;
-            transform: translate(10px, -25px);
-        }
-        .bus-label {
-            color: black;
-            text-shadow: 0 0 3px white, 0 0 5px white;
-            padding: 2px 6px;
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            font-weight: bold;
-            white-space: nowrap;
-            position: absolute;
-            transform: translate(10px, -25px);
-        }
-        .custom-div-icon {
-            display: flex;
-            align-items: flex-start;
-        }
         .leaflet-control-attribution {
             display: none !important;
         }
@@ -54,7 +27,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
+            right аппарат: 0;
             background: #FE8304;
             color: black;
             padding: 20px;
@@ -76,52 +49,55 @@
             text-align: right;
             z-index: 1000;
         }
+        .bus-label {
+            color: black;
+            font-weight: bold;
+            text-shadow: 1px 1px white, -1px -1px white, 1px -1px white, -1px 1px white;
+        }
     </style>
-
     <!-- Script Leaflet -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-    <div id="header">SUPERVISIÓN DEL CIRCUITO ESCOLAR</div>
+    <div id="header">SUPERVISIÓN DEL CIRCUITO "EL DENIS"</div>
     <div id="map"></div>
-    <div id="footer">© 2025 UTBFM Juárez N.L.</div>
-
+    <div id="footer">© 2025 EL DENIS</div>
     <script>
         // Inicializar la carta con coordenadas iniciales
-        var map = L.map('map').setView([25.638682972120648, -100.04763754830324], 13);
+        var map = L.map('map').setView([25.638258, -100.047526], 15);
 
         // Agregar las teselas de OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Variables para el marcador y la polilínea dinámica
+        // Variables para el marcador y la polilínea
         var marker = null;
-        var dynamicPolyline = null;
-        var dynamicCoordinates = [];
+        var polyline = null;
+        var coordinates = [];
         var lastLatLng = null;
 
         // Función para animar el movimiento del marcador
         function smoothMoveMarker(newLatLng, duration = 1000) {
             if (!marker) {
-                marker = L marker(newLatLng, {
+                marker = L.marker(newLatLng, {
                     icon: L.divIcon({
-                        className: 'custom-div-icon',
-                        html: '<div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png" style="width:25px; height:41px;"><div class="bus-label">Bus 1</div></div>',
-                        iconSize: [50, 41],
+                        className: 'bus-icon',
+                        html: `<div style="position: relative; text-align: center;"><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png" style="width: 25px; height: 41px;"><span class="bus-label" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">1</span></div>`,
+                        iconSize: [25, 41],
                         iconAnchor: [12, 41]
                     })
                 }).addTo(map);
                 lastLatLng = newLatLng;
-                dynamicCoordinates.push(newLatLng);
-                updateDynamicPolyline();
+                coordinates.push(newLatLng);
+                updatePolyline();
                 map.panTo(newLatLng);
                 return;
             }
 
             // Animar el movimiento del marcador
             const startLatLng = lastLatLng || newLatLng;
-            const steps = 20;
+            const steps = 20; // Número de pasos para la animación
             const deltaLat = (newLatLng[0] - startLatLng[0]) / steps;
             const deltaLng = (newLatLng[1] - startLatLng[1]) / steps;
             let step = 0;
@@ -136,23 +112,24 @@
                 } else {
                     marker.setLatLng(newLatLng);
                     lastLatLng = newLatLng;
-                    dynamicCoordinates.push(newLatLng);
-                    updateDynamicPolyline();
+                    coordinates.push(newLatLng);
+                    updatePolyline();
                     map.panTo(newLatLng);
                 }
             }
             animate();
         }
 
-        // Actualizar la polilínea dinámica
-        function updateDynamicPolyline() {
-            if (dynamicCoordinates.length > 100) {
-                dynamicCoordinates.shift();
+        // Actualizar la polilínea
+        function updatePolyline() {
+            // Limitar la polilínea a las últimas 100 coordenadas para mejor rendimiento
+            if (coordinates.length > 100) {
+                coordinates.shift();
             }
-            if (dynamicPolyline) {
-                dynamicPolyline.setLatLngs(dynamicCoordinates);
+            if (polyline) {
+                polyline.setLatLngs(coordinates);
             } else {
-                dynamicPolyline = L.polyline(dynamicCoordinates, { color: '#FE8304', weight: 5, opacity: 0.7 }).addTo(map);
+                polyline = L.polyline(coordinates, { color: 'blue', weight: 4 }).addTo(map);
             }
         }
 
@@ -170,13 +147,13 @@
                     throw new Error('No data available in the CSV');
                 }
 
-                // Buscar la última fila para el bus "1"
+                // Obtener la última fila para el bus "1"
                 for (let i = lines.length - 1; i >= 1; i--) {
                     const line = lines[i].split(',');
-                    const busNumber = line[3].trim();
+                    const busNumber = line[3].trim(); // Columna Bus
                     if (busNumber === "1") {
-                        const lat = parseFloat(line[4]);
-                        const lon = parseFloat(line[5]);
+                        const lat = parseFloat(line[4]); // Columna Latitude
+                        const lon = parseFloat(line[5]); // Columna Longitude
                         if (!isNaN(lat) && !isNaN(lon)) {
                             smoothMoveMarker([lat, lon]);
                             break;
@@ -190,68 +167,7 @@
 
         // Actualización inicial y cada 2 segundos
         fetchGPSData();
-        setInterval(fetchGPSData, 2000);
-
-        // Agregar marcadores de escuelas
-        var customMarker1 = L.marker([25.648591068705205, -100.0856852033863], {
-            icon: L.divIcon({
-                className: 'custom-div-icon',
-                html: '<div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png" style="width:25px; height:41px;"><div class="school-label">CECYTE</div></div>',
-                iconSize: [50, 41],
-                iconAnchor: [12, 41]
-            })
-        }).addTo(map);
-
-        var customMarker2 = L.marker([25.63792851629281, -100.04780921128857], {
-            icon: L.divIcon({
-                className: 'custom-div-icon',
-                html: '<div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png" style="width:25px; height:41px;"><div class="school-label">UTBFM</div></div>',
-                iconSize: [50, 41],
-                iconAnchor: [12, 41]
-            })
-        }).addTo(map);
-
-        var customMarker3 = L.marker([25.64946065968687, -100.0733161251606], {
-            icon: L.divIcon({
-                className: 'custom-div-icon',
-                html: '<div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png" style="width:25px; height:41px;"><div class="school-label">CONALEP</div></div>',
-                iconSize: [50, 41],
-                iconAnchor: [12, 41]
-            })
-        }).addTo(map);
-
-        var customMarker4 = L.marker([25.64517418001307, -100.08823920605757], {
-            icon: L.divIcon({
-                className: 'custom-div-icon',
-                html: '<div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png" style="width:25px; height:41px;"><div class="school-label">Preparatoria 22 UANL</div></div>',
-                iconSize: [100, 41],
-                iconAnchor: [12, 41]
-            })
-        }).addTo(map);
-
-        var customMarker5 = L.marker([25.604540659906498, -100.10462623465052], {
-            icon: L.divIcon({
-                className: 'custom-div-icon',
-                html: '<div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png" style="width:25px; height:41px;"><div class="school-label">UNIDAD ACADEMICA JUAREZ UANL</div></div>',
-                iconSize: [150, 41],
-                iconAnchor: [12, 41]
-            })
-        }).addTo(map);
-
-        // Polilínea estática (opcional, se puede eliminar si solo quieres la dinámica)
-        var polylinePoints = [
-            [25.638258, -100.047526], [25.638282, -100.047646], [25.638488, -100.047686],
-            // ... (incluye todas las coordenadas que proporcionaste)
-            [25.638223, -100.047484]
-        ];
-        var staticPolyline = L.polyline(polylinePoints, {
-            color: '#FE8304',
-            weight: 5,
-            opacity: 0.3 // Opacidad reducida para diferenciar de la polilínea dinámica
-        }).addTo(map);
-
-        // Ajustar la vista para incluir todos los elementos
-        map.fitBounds(staticPolyline.getBounds());
+        setInterval(fetchGPSData, 2000); // Reducido de 10000 a 2000 ms
     </script>
 </body>
 </html>
