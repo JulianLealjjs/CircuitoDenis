@@ -27,7 +27,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
+            right аппарат: 0;
             background: #FE8304;
             color: black;
             padding: 20px;
@@ -63,53 +63,77 @@
     <div id="map"></div>
     <div id="footer">© 2025 EL DENIS</div>
     <script>
-        // Initialiser la carte avec des coordonnées par défaut (centro en las nuevas coordenadas)
+        // Inicializar la carta con coordenadas iniciales
         var map = L.map('map').setView([25.638258, -100.047526], 15);
 
-        // Ajouter les tuiles OpenStreetMap
+        // Agregar las teselas de OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Marqueur (initialement nul)
+        // Variables para el marcador y la polilínea
         var marker = null;
         var polyline = null;
         var coordinates = [];
+        var lastLatLng = null;
 
-        // Mettre à jour ou créer le marqueur et la polilínea
-        function updateMarker(lat, lon, busNumber) {
-            console.log('updateMarker appelé avec:', lat, lon, busNumber);
-            const coords = [lat, lon];
-            
-            // Actualizar el marcador
-            if (marker) {
-                marker.setLatLng(coords);
-            } else {
-                marker = L.marker(coords, {
+        // Función para animar el movimiento del marcador
+        function smoothMoveMarker(newLatLng, duration = 1000) {
+            if (!marker) {
+                marker = L.marker(newLatLng, {
                     icon: L.divIcon({
                         className: 'bus-icon',
-                        html: `<div style="position: relative; text-align: center;"><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png" style="width: 25px; height: 41px;"><span class="bus-label" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">${busNumber}</span></div>`,
+                        html: `<div style="position: relative; text-align: center;"><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png" style="width: 25px; height: 41px;"><span class="bus-label" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">1</span></div>`,
                         iconSize: [25, 41],
                         iconAnchor: [12, 41]
                     })
                 }).addTo(map);
+                lastLatLng = newLatLng;
+                coordinates.push(newLatLng);
+                updatePolyline();
+                map.panTo(newLatLng);
+                return;
             }
 
-            // Agregar coordenadas a la lista para la polilínea
-            coordinates.push(coords);
-            
-            // Actualizar la polilínea
+            // Animar el movimiento del marcador
+            const startLatLng = lastLatLng || newLatLng;
+            const steps = 20; // Número de pasos para la animación
+            const deltaLat = (newLatLng[0] - startLatLng[0]) / steps;
+            const deltaLng = (newLatLng[1] - startLatLng[1]) / steps;
+            let step = 0;
+
+            function animate() {
+                if (step <= steps) {
+                    const currentLat = startLatLng[0] + deltaLat * step;
+                    const currentLng = startLatLng[1] + deltaLng * step;
+                    marker.setLatLng([currentLat, currentLng]);
+                    step++;
+                    setTimeout(animate, duration / steps);
+                } else {
+                    marker.setLatLng(newLatLng);
+                    lastLatLng = newLatLng;
+                    coordinates.push(newLatLng);
+                    updatePolyline();
+                    map.panTo(newLatLng);
+                }
+            }
+            animate();
+        }
+
+        // Actualizar la polilínea
+        function updatePolyline() {
+            // Limitar la polilínea a las últimas 100 coordenadas para mejor rendimiento
+            if (coordinates.length > 100) {
+                coordinates.shift();
+            }
             if (polyline) {
                 polyline.setLatLngs(coordinates);
             } else {
                 polyline = L.polyline(coordinates, { color: 'blue', weight: 4 }).addTo(map);
             }
-
-            // Centrar el mapa en las nuevas coordenadas
-            map.panTo(coords);
         }
 
-        // Fonction pour récupérer les données GPS depuis le Google Sheet CSV
+        // Función para obtener datos GPS desde el CSV de Google Sheets
         async function fetchGPSData() {
             try {
                 const sheetUrl = 'https://docs.google.com/spreadsheets/d/1LdIgH39lD19FOFhFT9ZIUVZR2fMCy9EPvLb-QhkAZZ0/export?format=csv&gid=2145683287';
@@ -122,24 +146,28 @@
                 if (lines.length < 2) {
                     throw new Error('No data available in the CSV');
                 }
-                const lastLine = lines[lines.length - 1].split(',');
-                const lat = parseFloat(lastLine[4]); // Latitude
-                const lon = parseFloat(lastLine[5]); // Longitude
-                const busNumber = lastLine[3]; // Numéro de bus
 
-                if (!isNaN(lat) && !isNaN(lon)) {
-                    updateMarker(lat, lon, busNumber);
-                } else {
-                    console.warn('Invalid GPS coordinates:', lastLine);
+                // Obtener la última fila para el bus "1"
+                for (let i = lines.length - 1; i >= 1; i--) {
+                    const line = lines[i].split(',');
+                    const busNumber = line[3].trim(); // Columna Bus
+                    if (busNumber === "1") {
+                        const lat = parseFloat(line[4]); // Columna Latitude
+                        const lon = parseFloat(line[5]); // Columna Longitude
+                        if (!isNaN(lat) && !isNaN(lon)) {
+                            smoothMoveMarker([lat, lon]);
+                            break;
+                        }
+                    }
                 }
             } catch (err) {
                 console.error('Error fetching GPS coordinates:', err);
             }
         }
 
-        // Mise à jour initiale + toutes les 10 secondes
+        // Actualización inicial y cada 2 segundos
         fetchGPSData();
-        setInterval(fetchGPSData, 10000);
+        setInterval(fetchGPSData, 2000); // Reducido de 10000 a 2000 ms
     </script>
 </body>
 </html>
